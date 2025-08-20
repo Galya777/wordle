@@ -32,6 +32,9 @@ library
     exposed-modules: Lib
                    , Wordle.Types
                    , Wordle.Monad
+                   , Wordle.Game
+                   , Wordle.Interactive
+                   , Wordle.WordList
 
 test-suite wordle-test
     type: exitcode-stdio-1.0

@@ -1,28 +1,30 @@
+-- Basic types for my Wordle game
 module Wordle.Types where
 
 import Data.Text (Text)
 
-
+-- The three colors we show for each letter
 data LetterResult 
-  = Gray    -- ^ Letter is not in the word at all
-  | Yellow  -- ^ Letter is in the word but wrong position  
-  | Green   -- ^ Letter is in the correct position
+  = Gray    -- not in word
+  | Yellow  -- in word, wrong spot
+  | Green   -- correct spot
   deriving (Show, Eq)
 
 
+-- One guess with its colors
 data GuessResult = GuessResult
-  { guessWord :: Text           -- ^ The word that was guessed
-  , letterResults :: [LetterResult]  -- ^ Color for each letter
+  { guessWord :: Text           
+  , letterResults :: [LetterResult]  
   } deriving (Show, Eq)
 
-
+-- Game difficulty levels
 data Difficulty 
-  = Easy    -- ^ Warns about invalid moves
-  | Normal  -- ^ Standard Wordle rules
-  | Expert  -- ^ Can lie once
+  = Easy    -- helps with warnings
+  | Normal  -- regular wordle
+  | Expert  -- can lie once
   deriving (Show, Eq)
 
-
+-- Who is guessing?
 data GameMode
   = PlayerGuesses  
   | ComputerGuesses 

@@ -1,4 +1,4 @@
--- | This module shows how we use MTL to combine different "effects"
+-- My attempt at using MTL for the wordle game
 module Wordle.Monad where
 
 import Control.Monad.State
@@ -9,7 +9,7 @@ import Data.Text (Text)
 import qualified Data.Text as T
 import Wordle.Types
 
-
+-- What I need to track during the game
 data GameState = GameState
   { secretWord :: Text            
   , guesses :: [GuessResult]        
@@ -18,29 +18,27 @@ data GameState = GameState
   , hasLied :: Bool                 
   } deriving (Show, Eq)
 
--- | Game configuration
+-- Settings that don't change during game
 data GameConfig = GameConfig
-  { wordList :: [Text]              -- ^ All possible words
-  , wordLength :: Int               -- ^ word length to guess
+  { wordList :: [Text]              
+  , wordLength :: Int               
   } deriving (Show, Eq)
 
--- | Error types
+-- Things that can go wrong
 data GameError 
-  = InvalidWord Text                -- ^ Word not in dictionary
-  | ContradictsPrevious Text        -- ^ Guess contradicts previous answers
-  | GameOver                        -- ^ No more guesses allowed
-  | InvalidInput Text               -- ^ Bad user input
+  = InvalidWord Text                
+  | ContradictsPrevious Text        
+  | GameOver                        
+  | PlayerQuit                      -- Player chose to quit
+  | InvalidInput Text               
   deriving (Show, Eq)
 
 
-
--- - StateT: Remember game state
--- - ReaderT: Access configuration  
--- - ExceptT: Handle errors
--- - IO: Read files, print to screen
+-- My monad stack - combines state, config, errors, and IO
+-- Still figuring out how this works exactly
 type WordleM = StateT GameState (ReaderT GameConfig (ExceptT GameError IO))
 
--- | Helper function to run our WordleM computation
+-- Function to actually run the monad
 runWordleM :: GameState -> GameConfig -> WordleM a -> IO (Either GameError (a, GameState))
 runWordleM initialState config action = 
   runExceptT $ runReaderT (runStateT action initialState) config

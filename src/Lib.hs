@@ -4,23 +4,23 @@ module Lib
 
 import Wordle.Types
 import Wordle.Monad
+import Wordle.Game
+import Wordle.Interactive
+import Wordle.WordList
 import Data.Text (Text)
 import qualified Data.Text as T
 
 someFunc :: IO ()
 someFunc = do
-  putStrLn "Welcome to Wordle!"
-
+  putStrLn "Loading word list..."
   
-
-  let config = GameConfig [T.pack "HELLO", T.pack "WORLD"] 5
-  let initialState = GameState (T.pack "HELLO") [] 6 Normal False
+  -- Load words from file
+  wordList <- loadWordList "words"
+  putStrLn $ "Loaded " ++ show (length wordList) ++ " words"
   
-  result <- runWordleM initialState config $ do
-    return "Game initialized successfully!"
-    
-  case result of
-    Left err -> putStrLn $ "Error: " ++ show err
-    Right (msg, finalState) -> do
-      putStrLn msg
-      putStrLn $ "Final state: " ++ show finalState
+  -- Pick a random secret word
+  secretWord <- pickRandomWord wordList
+  putStrLn "Secret word selected! Good luck!"
+  
+  -- Start the interactive game!
+  startGame wordList secretWord
