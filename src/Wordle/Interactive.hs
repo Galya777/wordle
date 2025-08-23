@@ -67,14 +67,33 @@ playGame = do
       printMessage $ "Error: " ++ show err
       return $ GuessResult (T.pack "") []  -- dummy result
 
+-- Get difficulty choice from user
+chooseDifficulty :: IO Difficulty
+chooseDifficulty = do
+  putStrLn "Choose difficulty:"
+  putStrLn "1. Easy (helpful hints)"
+  putStrLn "2. Normal (standard Wordle)"
+  putStrLn "3. Expert (I might lie once!)"
+  putStr "Enter choice (1-3): "
+  choice <- getLine
+  case choice of
+    "1" -> return Easy
+    "2" -> return Normal
+    "3" -> return Expert
+    _ -> do
+      putStrLn "Invalid choice, using Normal difficulty."
+      return Normal
+
 -- Start a new game
 startGame :: [Text] -> Text -> IO ()
 startGame wordList secret = do
+  difficulty <- chooseDifficulty
   let config = GameConfig wordList 5
-  let initialState = GameState secret [] 6 Normal False
+  let initialState = GameState secret [] 6 difficulty False
   
   result <- runWordleM initialState config $ do
     printMessage "Welcome to Wordle!"
+    printMessage $ "Difficulty: " ++ show difficulty
     printMessage "Guess the 5-letter word. You have 6 attempts."
     printMessage ""
     playGame

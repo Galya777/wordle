@@ -5,11 +5,14 @@ import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
 import Control.Monad.IO.Class
+import Control.Monad (when)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Char (toUpper)
+import System.Random
 import Wordle.Types
 import Wordle.Monad
+import Wordle.ColorLogic
 
 -- Let me try to understand how to use the different parts of WordleM
 
@@ -48,29 +51,84 @@ checkGuess :: Text -> WordleM GuessResult
 checkGuess guess = do
   state <- get
   let secret = secretWord state
+  let diff = difficulty state
   
   -- Make sure word is valid first
   checkValidWord guess
   
-  -- Calculate the colors for each letter
-  let results = calculateColors (T.unpack guess) (T.unpack secret)
-  let guessResult = GuessResult guess results
+  -- Calculate the colors for each letter (using correct logic)
+  let results = calculateColorsCorrect (T.unpack guess) (T.unpack secret)
+  
+  -- Apply difficulty-specific modifications
+  finalResults <- applyDifficultyRules results guess secret diff
+  
+  let guessResult = GuessResult guess finalResults
   
   -- Add this guess to our state
   addGuess guessResult
   
   -- Print what happened
   printMessage $ "Guess: " ++ T.unpack guess
-  printMessage $ "Result: " ++ show results
+  printMessage $ "Result: " ++ show finalResults
+  
+  -- Easy mode: give helpful warnings
+  when (diff == Easy) $ giveEasyModeHints finalResults guess
   
   return guessResult
 
--- Helper function to calculate colors
--- This is tricky logic - let me work through it step by step
-calculateColors :: String -> String -> [LetterResult]
-calculateColors guess secret = zipWith checkLetter guess [0..]
-  where
-    checkLetter guessChar pos
-      | guessChar == (secret !! pos) = Green  -- exact match
-      | guessChar `elem` secret = Yellow       -- in word, wrong spot
-      | otherwise = Gray                       -- not in word
+-- Note: We now use calculateColorsCorrect from Wordle.ColorLogic
+-- which properly handles duplicate letters!
+
+-- Apply difficulty-specific rules to the results
+applyDifficultyRules :: [LetterResult] -> Text -> Text -> Difficulty -> WordleM [LetterResult]
+applyDifficultyRules results guess secret diff = case diff of
+  Easy -> return results    -- Easy mode: no changes, just helpful hints
+  Normal -> return results  -- Normal mode: standard Wordle rules
+  Expert -> expertModifyResults results  -- Expert mode: can lie once per game
+
+-- Expert mode: randomly lie about one result (but only once per game)
+expertModifyResults :: [LetterResult] -> WordleM [LetterResult]
+expertModifyResults results = do
+  state <- get
+  if hasLied state
+    then return results  -- already lied once, play fair now
+    else do
+      -- Decide randomly whether to lie this turn (30% chance)
+      shouldLie <- liftIO $ randomRIO (1, 10 :: Int)
+      if shouldLie <= 3  -- 30% chance
+        then do
+          -- Pick a random position to lie about
+          pos <- liftIO $ randomRIO (0, length results - 1)
+          let originalResult = results !! pos
+          newResult <- case originalResult of
+            Green -> return Yellow   -- lie: make green into yellow
+            Yellow -> return Gray    -- lie: make yellow into gray
+            Gray -> return Yellow    -- lie: make gray into yellow
+          
+          let liedResults = take pos results ++ [newResult] ++ drop (pos + 1) results
+          
+          -- Mark that we've lied
+          modify $ \s -> s { hasLied = True }
+          
+          printMessage "🤔 Something feels... different about this result..."
+          return liedResults
+        else return results
+
+-- Easy mode: give helpful hints
+giveEasyModeHints :: [LetterResult] -> Text -> WordleM ()
+giveEasyModeHints results guess = do
+  let greenCount = length $ filter (== Green) results
+  let yellowCount = length $ filter (== Yellow) results
+  let grayCount = length $ filter (== Gray) results
+  
+  when (greenCount > 0) $ 
+    printMessage $ "💚 Great! You got " ++ show greenCount ++ " letters in the right position!"
+  
+  when (yellowCount > 0) $ 
+    printMessage $ "💛 " ++ show yellowCount ++ " letters are in the word but wrong position."
+  
+  when (grayCount == 5) $ 
+    printMessage "😅 None of those letters are in the word. Try completely different letters!"
+  
+  when (greenCount == 4) $ 
+    printMessage "🔥 So close! Just one more letter to get right!"
