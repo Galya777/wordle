@@ -132,3 +132,13 @@ giveEasyModeHints results guess = do
   
   when (greenCount == 4) $ 
     printMessage "🔥 So close! Just one more letter to get right!"
+  
+  -- Special hint for duplicate letters
+  let guessStr = T.unpack guess
+  let duplicates = findDuplicateLetters guessStr
+  when (not (null duplicates) && yellowCount + greenCount < length guessStr) $
+    printMessage "💡 Tip: If you used duplicate letters, remember each letter in the secret word can only be matched once!"
+
+-- Find duplicate letters in a guess
+findDuplicateLetters :: String -> [Char]
+findDuplicateLetters str = [c | c <- str, length (filter (== c) str) > 1]

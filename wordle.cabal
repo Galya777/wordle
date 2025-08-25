@@ -37,6 +37,7 @@ library
                    , Wordle.WordList
                    , Wordle.ColorLogic
                    , Wordle.TestGame
+                   , Wordle.Assistant
 
 test-suite wordle-test
     type: exitcode-stdio-1.0

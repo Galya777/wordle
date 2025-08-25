@@ -11,6 +11,7 @@ import Data.Char (toUpper)
 import Wordle.Types
 import Wordle.Monad
 import Wordle.Game
+import Wordle.Assistant
 
 -- Check if game is over (won or lost)
 isGameOver :: WordleM Bool
@@ -67,6 +68,27 @@ playGame = do
       printMessage $ "Error: " ++ show err
       return $ GuessResult (T.pack "") []  -- dummy result
 
+-- Choose game mode
+data PlayMode = HumanGuesses Difficulty | AssistantGuesses
+  deriving (Show, Eq)
+
+chooseGameMode :: IO PlayMode
+chooseGameMode = do
+  putStrLn "Choose game mode:"
+  putStrLn "1. I guess the word (Classic Wordle)"
+  putStrLn "2. Computer guesses my word (Assistant Mode)"
+  putStr "Enter choice (1-2): "
+  choice <- getLine
+  case choice of
+    "1" -> do
+      difficulty <- chooseDifficulty
+      return (HumanGuesses difficulty)
+    "2" -> return AssistantGuesses
+    _ -> do
+      putStrLn "Invalid choice, using Classic mode."
+      difficulty <- chooseDifficulty
+      return (HumanGuesses difficulty)
+
 -- Get difficulty choice from user
 chooseDifficulty :: IO Difficulty
 chooseDifficulty = do
@@ -87,7 +109,16 @@ chooseDifficulty = do
 -- Start a new game
 startGame :: [Text] -> Text -> IO ()
 startGame wordList secret = do
-  difficulty <- chooseDifficulty
+  gameMode <- chooseGameMode
+  let config = GameConfig wordList 5
+  
+  case gameMode of
+    HumanGuesses difficulty -> startHumanGame wordList secret difficulty
+    AssistantGuesses -> startAssistantGame wordList
+
+-- Start human guessing game (classic mode)
+startHumanGame :: [Text] -> Text -> Difficulty -> IO ()
+startHumanGame wordList secret difficulty = do
   let config = GameConfig wordList 5
   let initialState = GameState secret [] 6 difficulty False
   
@@ -97,6 +128,31 @@ startGame wordList secret = do
     printMessage "Guess the 5-letter word. You have 6 attempts."
     printMessage ""
     playGame
+    
+  case result of
+    Left PlayerQuit -> putStrLn "Thanks for playing!"
+    Left err -> putStrLn $ "Game error: " ++ show err
+    Right _ -> putStrLn "Thanks for playing!"
+
+-- Start assistant game (computer guesses)
+startAssistantGame :: [Text] -> IO ()
+startAssistantGame wordList = do
+  putStrLn "🤖 Welcome to Assistant Mode!"
+  putStrLn "Think of a 5-letter word, and I'll try to guess it!"
+  putStrLn "Make sure your word is in the dictionary."
+  putStrLn ""
+  putStr "Press Enter when you've thought of a word: "
+  _ <- getLine
+  
+  let config = GameConfig wordList 5
+  let dummySecret = T.pack "DUMMY"  -- We don't know the real secret
+  let initialState = GameState dummySecret [] 6 Normal False
+  
+  result <- runWordleM initialState config $ do
+    printMessage "🤖 Let me start guessing!"
+    printMessage "I'll make strategic guesses and you provide feedback."
+    printMessage ""
+    playAssistantGame
     
   case result of
     Left PlayerQuit -> putStrLn "Thanks for playing!"
