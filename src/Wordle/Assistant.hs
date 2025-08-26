@@ -179,7 +179,17 @@ getHumanFeedback guess = do
     then do
       printMessage "Please enter exactly 5 letters (G/Y/R)"
       getHumanFeedback guess
-    else return feedback
+    else do
+      -- Check for contradictions with previous guesses
+      state <- get
+      let previousGuesses = guesses state
+      case detectContradiction guess feedback previousGuesses of
+        Just contradiction -> do
+          printMessage "🚨 CONTRADICTION DETECTED!"
+          printMessage $ "Your feedback contradicts a previous guess: " ++ contradiction
+          printMessage "Please check your feedback and try again."
+          getHumanFeedback guess
+        Nothing -> return feedback
   where
     parseColor 'G' = Green
     parseColor 'g' = Green
@@ -188,3 +198,49 @@ getHumanFeedback guess = do
     parseColor 'R' = Gray
     parseColor 'r' = Gray
     parseColor _ = Gray  -- Default to Gray for invalid input
+
+-- Detect contradictions between current feedback and previous guesses
+detectContradiction :: Text -> [LetterResult] -> [GuessResult] -> Maybe String
+detectContradiction currentGuess currentFeedback previousGuesses = 
+  let currentWord = T.unpack currentGuess
+      currentPairs = zip currentWord currentFeedback
+  in findContradiction currentPairs previousGuesses
+  where
+    findContradiction :: [(Char, LetterResult)] -> [GuessResult] -> Maybe String
+    findContradiction _ [] = Nothing
+    findContradiction currentPairs (prevGuess:rest) = 
+      case checkAgainstPrevious currentPairs prevGuess of
+        Just contradiction -> Just contradiction
+        Nothing -> findContradiction currentPairs rest
+    
+    checkAgainstPrevious :: [(Char, LetterResult)] -> GuessResult -> Maybe String
+    checkAgainstPrevious currentPairs prevGuess = 
+      let prevWord = T.unpack (guessWord prevGuess)
+          prevResults = letterResults prevGuess
+          prevPairs = zip prevWord prevResults
+      in checkPairConsistency currentPairs prevPairs
+    
+    checkPairConsistency :: [(Char, LetterResult)] -> [(Char, LetterResult)] -> Maybe String
+    checkPairConsistency current previous = 
+      let conflicts = findConflicts current previous
+      in if null conflicts 
+         then Nothing 
+         else Just (head conflicts)
+    
+    findConflicts :: [(Char, LetterResult)] -> [(Char, LetterResult)] -> [String]
+    findConflicts current previous = 
+      [conflict | (currChar, currResult) <- current,
+                  (prevChar, prevResult) <- previous,
+                  currChar == prevChar,
+                  Just conflict <- [checkLetterConsistency currChar currResult prevResult]]
+    
+    checkLetterConsistency :: Char -> LetterResult -> LetterResult -> Maybe String
+    checkLetterConsistency char Gray Green = 
+      Just $ "Letter '" ++ [char] ++ "' was Green before, now Gray"
+    checkLetterConsistency char Gray Yellow = 
+      Just $ "Letter '" ++ [char] ++ "' was Yellow before, now Gray"
+    checkLetterConsistency char Green Gray = 
+      Just $ "Letter '" ++ [char] ++ "' was Gray before, now Green"
+    checkLetterConsistency char Yellow Gray = 
+      Just $ "Letter '" ++ [char] ++ "' was Gray before, now Yellow"
+    checkLetterConsistency _ _ _ = Nothing  -- No contradiction

@@ -117,6 +117,9 @@ expertModifyResults results = do
 -- Easy mode: give helpful hints
 giveEasyModeHints :: [LetterResult] -> Text -> WordleM ()
 giveEasyModeHints results guess = do
+  -- First check for contradictions with previous guesses
+  checkForContradictions guess results
+  
   let greenCount = length $ filter (== Green) results
   let yellowCount = length $ filter (== Yellow) results
   let grayCount = length $ filter (== Gray) results
@@ -138,6 +141,58 @@ giveEasyModeHints results guess = do
   let duplicates = findDuplicateLetters guessStr
   when (not (null duplicates) && yellowCount + greenCount < length guessStr) $
     printMessage "💡 Tip: If you used duplicate letters, remember each letter in the secret word can only be matched once!"
+
+-- Check for contradictions in Easy mode
+checkForContradictions :: Text -> [LetterResult] -> WordleM ()
+checkForContradictions currentGuess currentResults = do
+  state <- get
+  let previousGuesses = guesses state
+  case findGameContradiction currentGuess currentResults previousGuesses of
+    Just contradiction -> do
+      printMessage "⚠️  WAIT! This seems to contradict your previous guesses:"
+      printMessage $ "   " ++ contradiction
+      printMessage "   (This might mean you made an error, or I'm in Expert mode and lied earlier! 🤔)"
+    Nothing -> return ()
+
+-- Find contradictions in the main game (similar to Assistant mode but different context)
+findGameContradiction :: Text -> [LetterResult] -> [GuessResult] -> Maybe String
+findGameContradiction currentGuess currentResults previousGuesses = 
+  let currentWord = T.unpack currentGuess
+      currentPairs = zip currentWord currentResults
+  in checkAgainstAllPrevious currentPairs previousGuesses
+  where
+    checkAgainstAllPrevious :: [(Char, LetterResult)] -> [GuessResult] -> Maybe String
+    checkAgainstAllPrevious _ [] = Nothing
+    checkAgainstAllPrevious currentPairs (prevGuess:rest) = 
+      case checkConsistencyWithPrevious currentPairs prevGuess of
+        Just contradiction -> Just contradiction
+        Nothing -> checkAgainstAllPrevious currentPairs rest
+    
+    checkConsistencyWithPrevious :: [(Char, LetterResult)] -> GuessResult -> Maybe String
+    checkConsistencyWithPrevious currentPairs prevGuess = 
+      let prevWord = T.unpack (guessWord prevGuess)
+          prevResults = letterResults prevGuess
+          prevPairs = zip prevWord prevResults
+      in findInconsistency currentPairs prevPairs
+    
+    findInconsistency :: [(Char, LetterResult)] -> [(Char, LetterResult)] -> Maybe String
+    findInconsistency current previous = 
+      let conflicts = [conflict | (currChar, currResult) <- current,
+                                  (prevChar, prevResult) <- previous,
+                                  currChar == prevChar,
+                                  Just conflict <- [detectInconsistency currChar currResult prevResult]]
+      in if null conflicts then Nothing else Just (head conflicts)
+    
+    detectInconsistency :: Char -> LetterResult -> LetterResult -> Maybe String
+    detectInconsistency char Gray Green = 
+      Just $ "Letter '" ++ [char] ++ "' was Green in a previous guess, but now it's Gray"
+    detectInconsistency char Gray Yellow = 
+      Just $ "Letter '" ++ [char] ++ "' was Yellow in a previous guess, but now it's Gray"
+    detectInconsistency char Green Gray = 
+      Just $ "Letter '" ++ [char] ++ "' was Gray in a previous guess, but now it's Green"
+    detectInconsistency char Yellow Gray = 
+      Just $ "Letter '" ++ [char] ++ "' was Gray in a previous guess, but now it's Yellow"
+    detectInconsistency _ _ _ = Nothing
 
 -- Find duplicate letters in a guess
 findDuplicateLetters :: String -> [Char]
