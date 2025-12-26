@@ -5,33 +5,33 @@ import Wordle.Types
 import Wordle.Monad
 import Wordle.ColorLogic
 
--- Pomoshtnik za namirane na dumi
+-- Assistant for finding words
 pomogniMi :: [String] -> [GuessResult] -> [String]
 pomogniMi dumi opiti = filter podhodiashta dumi
   where
     podhodiashta d = all (proveriDuma d) opiti
 
--- Proverka dali duma otgovaria na rezultat ot opit
+-- Check if a word matches the result of a guess
 proveriDuma :: String -> GuessResult -> Bool
-proveriDuma d (GuessResult g res) = 
+proveriDuma d (GuessResult g res) =
   let ochakvanRes = proveriCvetove g d
   in ochakvanRes == res
 
--- Glavna funkcia za asistent rejim
+-- Main function for assistant mode
 asistentCikul :: [String] -> [GuessResult] -> IO ()
 asistentCikul vsiachkiDumi opiti = do
   let kandidati = pomogniMi vsiachkiDumi opiti
-  putStrLn $ "Namereni dumi: " ++ show (length kandidati)
+  putStrLn $ "Found words: " ++ show (length kandidati)
   if length kandidati <= 10
     then print kandidati
     else print (take 10 kandidati ++ ["..."])
-  
+
   if null kandidati
-    then putStrLn "Greshka: ne namerih dumi!"
+    then putStrLn "Error: no words found!"
     else do
-      putStrLn "Koi beshe tvoia opit?"
+      putStrLn "What was your guess?"
       opitDuma <- getLine
-      putStrLn "Kakvi sa cvetovete? (G=Green, Y=Yellow, R=Gray, npr. GYYRG)"
+      putStrLn "What are the colors? (G=Green, Y=Yellow, R=Gray, e.g. GYYRG)"
       cvetoveInput <- getLine
       
       let novOpit = GuessResult opitDuma (map parseCvet cvetoveInput)

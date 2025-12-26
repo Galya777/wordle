@@ -6,35 +6,35 @@ import Wordle.Monad
 import Wordle.ColorLogic
 import Data.Char (toUpper)
 
--- Glaven cikul na igrata
+-- Main game loop
 igraiIgra :: GameState -> IO ()
 igraiIgra sustoianie = do
   if length (guesses sustoianie) >= maxGuesses sustoianie
     then do
-      putStrLn "ZAGUBI! Dumata beshe:"
+      putStrLn "YOU LOSE! The word was:"
       putStrLn (secretWord sustoianie)
     else do
-      putStrLn $ "Opit " ++ show (length (guesses sustoianie) + 1) ++ "/" ++ show (maxGuesses sustoianie)
-      putStrLn "Vuvedi duma (5 bukvi):"
+      putStrLn $ "Attempt " ++ show (length (guesses sustoianie) + 1) ++ "/" ++ show (maxGuesses sustoianie)
+      putStrLn "Enter a word (5 letters):"
       vhod <- getLine
       let duma = map toUpper vhod
-      
+
       if length duma /= 5
         then do
-          putStrLn "Greshka: Dumata triabva da e 5 bukvi!"
+          putStrLn "Error: The word must be 5 letters!"
           igraiIgra sustoianie
         else do
           let cvetove = proveriCvetove duma (secretWord sustoianie)
           let novOpit = GuessResult duma cvetove
           let novoSustoianie = sustoianie { guesses = guesses sustoianie ++ [novOpit] }
-          
+
           pokajiRezultat cvetove
-          
+
           if all (== Green) cvetove
-            then putStrLn "BRAVO! SPECHELI!"
+            then putStrLn "GREAT! YOU WIN!"
             else igraiIgra novoSustoianie
 
--- Pokazva cvetovete po po-razbiram nachin
+-- Displays the colors in an understandable way
 pokajiRezultat :: [LetterResult] -> IO ()
 pokajiRezultat [] = putStrLn ""
 pokajiRezultat (r:rs) = do

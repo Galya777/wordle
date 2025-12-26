@@ -2,7 +2,7 @@ module Wordle.ColorLogic where
 
 import Wordle.Types
 
--- Proverka na cvetovete (student style)
+-- Color check
 proveriCvetove :: String -> String -> [LetterResult]
 proveriCvetove duma taina = map proveri (zip [0..] duma)
   where
@@ -11,7 +11,7 @@ proveriCvetove duma taina = map proveri (zip [0..] duma)
       | bukva `elem` taina    = Yellow
       | otherwise            = Gray
 
--- Funkcia za po-tochno presmiatane (ako studenta se e potrudil poveche)
+-- Function for more accurate calculation
 presmetniCvetove :: String -> String -> [LetterResult]
 presmetniCvetove [] [] = []
 presmetniCvetove (g:gs) (s:ss)

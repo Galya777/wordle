@@ -8,17 +8,17 @@ import Wordle.Assistant
 
 someFunc :: IO ()
 someFunc = do
-  putStrLn "Zaredete dumi..."
+  putStrLn "Loading words..."
   vsiachkiDumi <- zarediDumi "words"
-  
-  putStrLn "Izberete rejim: 1 - Igraesh ti, 2 - Asistent"
+
+  putStrLn "Choose mode: 1 - You play, 2 - Assistant"
   izbor <- getLine
-  
+
   if izbor == "1"
     then do
       tainaDuma <- izberiSluchainaDuma vsiachkiDumi
       let nachalo = novoGameState tainaDuma Normal
       igraiIgra nachalo
     else do
-      putStrLn "Asistent rejim startiran."
+      putStrLn "Assistant mode started."
       asistentCikul vsiachkiDumi []
