@@ -1,34 +1,24 @@
-module Lib
-    ( someFunc
-    ) where
+module Lib (someFunc) where
 
 import Wordle.Types
 import Wordle.Monad
 import Wordle.Game
-import Wordle.Interactive
 import Wordle.WordList
-import Wordle.ColorLogic
-import Data.Text (Text)
-import qualified Data.Text as T
+import Wordle.Assistant
 
 someFunc :: IO ()
 someFunc = do
-  putStrLn "Loading word list..."
+  putStrLn "Zaredete dumi..."
+  vsiachkiDumi <- zarediDumi "words"
   
-  -- Load words from file
-  wordList <- loadWordList "words"
-  putStrLn $ "Loaded " ++ show (length wordList) ++ " words"
+  putStrLn "Izberete rejim: 1 - Igraesh ti, 2 - Asistent"
+  izbor <- getLine
   
-  -- Pick a random secret word
-  secretWord <- pickRandomWord wordList
-  putStrLn "Secret word selected! Good luck!"
-  putStrLn "(Now using improved color logic that handles duplicate letters correctly!)"
-  
-  -- Start the interactive game!
-  startGame wordList secretWord
-
--- Function to test color logic if needed
-testColorLogic :: IO ()
-testColorLogic = do
-  putStrLn "=== Testing Color Logic ==="
-  runTests
+  if izbor == "1"
+    then do
+      tainaDuma <- izberiSluchainaDuma vsiachkiDumi
+      let nachalo = novoGameState tainaDuma Normal
+      igraiIgra nachalo
+    else do
+      putStrLn "Asistent rejim startiran."
+      asistentCikul vsiachkiDumi []
